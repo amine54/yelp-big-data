@@ -1,1 +1,4 @@
-# yelp-big-data
+# Yelp Big Data Project Documentation
+
+## Setup the Environment
+
