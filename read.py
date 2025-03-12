@@ -171,11 +171,11 @@ checkins_per_hour = df_checkins.groupBy("hour").count().orderBy("hour")
 print("Number of check-ins per hour in a 24-hour period:")
 checkins_per_hour.show()
 
-# Load JSON files into Spark DataFrames
+
 business_df = spark.read.json(hdfs_business_path).select("business_id", "name", "city", "stars", "review_count")
 checkin_df = spark.read.json(hdfs_checkin_path).select("business_id", "date")
 
-# Aggregate check-in count per business
+
 checkin_df = checkin_df.groupBy("business_id").count().withColumnRenamed("count", "checkin_count")
 
 # Merge business and check-in data
