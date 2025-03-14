@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import nltk
 from nltk.corpus import stopwords
-import networkx as nx
+import networkx as nxspark
 
 # Set up the Spark session
 spark = SparkSession.builder \
@@ -14,16 +14,147 @@ spark = SparkSession.builder \
     .enableHiveSupport() \
     .getOrCreate()
 
-# Set HDFS file paths (adjusted according to your paths)
-hdfs_business_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_business.json"
-hdfs_review_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_review.json"
-hdfs_user_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_user.json"
-hdfs_checkin_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_checkin.json"
-hdfs_tip_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_tip.json"
-
-
+# Set HDFS file paths
+hdfs_business_path = "hdfs://node-master:9000/user/karim/yelp/business/yelp_academic_dataset_business.json"  # Change this to your HDFS path
+hdfs_review_path = "hdfs://node-master:9000/user/karim/yelp/review/yelp_academic_dataset_review.json"  # Change this to your HDFS path
+hdfs_user_path = "hdfs://node-master:9000/user/karim/yelp/user/yelp_academic_dataset_user.json"  # Change this to your HDFS path
+hdfs_checkin_path = "hdfs://node-master:9000/user/karim/yelp/checkin/yelp_academic_dataset_checkin.json"  # Change this to your HDFS path
+hdfs_tip_path = "hdfs://node-master:9000/user/karim/yelp/tip/yelp_academic_dataset_tip.json"
 # Load the business data from HDFS
 df_business = spark.read.json(hdfs_business_path)
+
+
+print("Top 10 businesses with the highest star rating:")
+spark.sql("""
+    SELECT name, stars 
+    FROM yelp_business 
+    ORDER BY stars DESC 
+    LIMIT 10
+""").show()
+
+print("Top 10 cities with the most merchants:")
+spark.sql("""
+    SELECT city, COUNT(*) as merchant_count 
+    FROM yelp_business 
+    GROUP BY city 
+    ORDER BY merchant_count DESC 
+    LIMIT 10
+""").show()
+
+print("Top 5 states with the most merchants:")
+spark.sql("""
+    SELECT state, COUNT(*) as merchant_count 
+    FROM yelp_business 
+    GROUP BY state 
+    ORDER BY merchant_count DESC 
+    LIMIT 5
+""").show()
+
+print("Number of reviews per year:")
+spark.sql("""
+    SELECT year(date) as year, COUNT(*) as review_count 
+    FROM yelp_review 
+    GROUP BY year 
+    ORDER BY year
+""").show()
+
+print("Top reviewers based on review count:")
+spark.sql("""
+    SELECT name, review_count 
+    FROM yelp_user 
+    ORDER BY review_count DESC 
+    LIMIT 10
+""").show()
+
+print("Number of check-ins per year:")
+spark.sql("""
+    SELECT year(date) as year, COUNT(*) as checkin_count 
+    FROM yelp_checkin 
+    GROUP BY year 
+    ORDER BY year
+""").show()
+
+print("Top 10 most reviewed businesses:")
+spark.sql("""
+    SELECT name, review_count 
+    FROM yelp_business 
+    ORDER BY review_count DESC 
+    LIMIT 10
+""").show()
+
+print("Average star rating per category:")
+spark.sql("""
+    SELECT category, AVG(stars) as avg_stars 
+    FROM (
+        SELECT explode(categories) as category, stars 
+        FROM yelp_business
+    ) 
+    GROUP BY category 
+    ORDER BY avg_stars DESC
+""").show()
+
+print("Most common business categories:")
+spark.sql("""
+    SELECT category, COUNT(*) as count 
+    FROM (
+        SELECT explode(categories) as category 
+        FROM yelp_business
+    ) 
+    GROUP BY category 
+    ORDER BY count DESC 
+    LIMIT 10
+""").show()
+
+print("Average stars per city:")
+spark.sql("""
+    SELECT city, AVG(stars) as avg_stars 
+    FROM yelp_business 
+    GROUP BY city 
+    ORDER BY avg_stars DESC 
+    LIMIT 10
+""").show()
+
+print("Businesses with the most tips:")
+spark.sql("""
+    SELECT business_id, COUNT(*) as tip_count 
+    FROM yelp_tip 
+    GROUP BY business_id 
+    ORDER BY tip_count DESC 
+    LIMIT 10
+""").show()
+
+print("Most active tip users:")
+spark.sql("""
+    SELECT user_id, COUNT(*) as tip_count 
+    FROM yelp_tip 
+    GROUP BY user_id 
+    ORDER BY tip_count DESC 
+    LIMIT 10
+""").show()
+
+print("Top 10 users with most friends:")
+spark.sql("""
+    SELECT name, SIZE(friends) as friend_count 
+    FROM yelp_user 
+    ORDER BY friend_count DESC 
+    LIMIT 10
+""").show()
+
+print("Top 10 users by useful votes:")
+spark.sql("""
+    SELECT name, useful 
+    FROM yelp_user 
+    ORDER BY useful DESC 
+    LIMIT 10
+""").show()
+
+print("Hourly distribution of reviews:")
+spark.sql("""
+    SELECT hour(date) as hour, COUNT(*) as review_count 
+    FROM yelp_review 
+    GROUP BY hour 
+    ORDER BY hour
+""").show()
 
 # Top 10 businesses with the highest star rating
 top_10_businesses = df_business.orderBy('stars', ascending=False).limit(10)
@@ -111,8 +242,8 @@ plt.imshow(wordcloud, interpolation="bilinear")
 plt.axis("off")
 plt.show()
 
-# Create word pairs and a network graph
-word_pairs = list(zip(tokens, tokens[1:]))  # Create word pairs
+
+word_pairs = list(zip(tokens, tokens[1:])) 
 G = nx.Graph()
 for word1, word2 in word_pairs:
     if word1.isalpha() and word2.isalpha():
@@ -174,8 +305,10 @@ checkins_per_hour = df_checkins.groupBy("hour").count().orderBy("hour")
 print("Number of check-ins per hour in a 24-hour period:")
 checkins_per_hour.show()
 
+
 business_df = spark.read.json(hdfs_business_path).select("business_id", "name", "city", "stars", "review_count")
 checkin_df = spark.read.json(hdfs_checkin_path).select("business_id", "date")
+
 
 checkin_df = checkin_df.groupBy("business_id").count().withColumnRenamed("count", "checkin_count")
 
