@@ -11,14 +11,17 @@ import networkx as nx
 # Set up the Spark session
 spark = SparkSession.builder \
     .appName("YelpBusinessAnalysis") \
+    .enableHiveSupport() \
     .getOrCreate()
 
-# Set HDFS file paths
-hdfs_business_path = "hdfs://node-master:9000/user/karim/yelp/business/yelp_academic_dataset_business.json"  # Change this to your HDFS path
-hdfs_review_path = "hdfs://node-master:9000/user/karim/yelp/review/yelp_academic_dataset_review.json"  # Change this to your HDFS path
-hdfs_user_path = "hdfs://node-master:9000/user/karim/yelp/user/yelp_academic_dataset_user.json"  # Change this to your HDFS path
-hdfs_checkin_path = "hdfs://node-master:9000/user/karim/yelp/checkin/yelp_academic_dataset_checkin.json"  # Change this to your HDFS path
-hdfs_tip_path = "hdfs://node-master:9000/user/karim/yelp/tip/yelp_academic_dataset_tip.json"
+# Set HDFS file paths (adjusted according to your paths)
+hdfs_business_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_business.json"
+hdfs_review_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_review.json"
+hdfs_user_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_user.json"
+hdfs_checkin_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_checkin.json"
+hdfs_tip_path = "hdfs://localhost:9000/user/achraf-123/yelp-big-data/yelp_academic_dataset_tip.json"
+
+
 # Load the business data from HDFS
 df_business = spark.read.json(hdfs_business_path)
 
@@ -171,10 +174,8 @@ checkins_per_hour = df_checkins.groupBy("hour").count().orderBy("hour")
 print("Number of check-ins per hour in a 24-hour period:")
 checkins_per_hour.show()
 
-
 business_df = spark.read.json(hdfs_business_path).select("business_id", "name", "city", "stars", "review_count")
 checkin_df = spark.read.json(hdfs_checkin_path).select("business_id", "date")
-
 
 checkin_df = checkin_df.groupBy("business_id").count().withColumnRenamed("count", "checkin_count")
 
@@ -198,5 +199,3 @@ top_merchants_by_reviews.select("city", "name", "review_count").show()
 print("Top 5 merchants in each city based on average rating:")
 top_merchants_by_rating.select("city", "name", "stars").show()
 
-print("Top 5 merchants in each city based on check-in frequency:")
-top_merchants_by_checkins.select("city", "name", "checkin_count").show()
